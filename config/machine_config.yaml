@@ -1,0 +1,54 @@
+# Machine-specific configuration. Nothing here requires a data-item ID to match;
+# everything is discovered from /probe. Overrides are optional.
+agent:
+  base_url: "https://demo.mtconnect.org"
+  device: null            # device name or uuid; null = first device in /probe
+  request_timeout_s: 10
+  poll_interval_s: 1.0
+  sample_count: 1000      # max observations per /sample call
+  max_retries: 5
+
+database:
+  url: "sqlite:///artifacts/pm.db"   # or postgresql+psycopg2://user:pw@host/db
+
+preprocessing:
+  grid_seconds: 5          # resampling grid for feature engineering
+  # MTConnect agents publish CHANGES only, so an unchanged value is still valid. Values are carried
+  # forward only inside a gap-free collection segment; every recorded gap starts a new segment.
+  min_segment_rows: 120
+
+features:
+  windows_seconds: [60, 300, 900, 3600]
+  min_window_fill: 0.6     # window needs >= 60% valid grid points (or min_state_points, whichever is smaller)
+  min_state_points: 12     # in-state points required inside a state-masked window; else feature = NaN
+
+# Operating-state mapping. scripts/discover.py lists the values your machine really reports.
+state:
+  source_type: "EXECUTION"        # DataItem type used to derive operating state
+  active_values: ["ACTIVE"]
+  idle_values: ["READY", "INTERRUPTED", "FEED_HOLD", "STOPPED", "OPTIONAL_STOP", "PROGRAM_STOPPED"]
+  # anything else (UNAVAILABLE, missing) -> "unknown"
+
+# Optional: restrict modelling to specific data-item IDs. Empty = all numeric SAMPLEs.
+signal_allowlist: []
+signal_blocklist: []
+
+anomaly:
+  contamination: "auto"
+  n_estimators: 200
+  min_training_rows_per_state: 50   # lowered: demo agent sends limited ACTIVE observations
+  alert_percentile: 99.5     # threshold from the training-score distribution (NOT a failure threshold)
+  robust_z_alert: 4.0
+  min_features_flagged: 2    # statistical flag needs this many signal features beyond robust_z_alert
+
+failure:
+  horizons_hours: [1, 6, 24, 72]
+  min_verified_failures: 20          # per horizon; below this, training is refused
+  min_distinct_runs_with_failure: 3
+
+rul:
+  min_component_lives: 15
+  min_observed_failures: 10
+
+recommendations:
+  rules_file: "config/maintenance_rules.yaml"

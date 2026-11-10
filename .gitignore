@@ -1,0 +1,17 @@
+.pytest_cache
+.venv
+.venv_new
+.venv312
+api/__pycache__
+config/__pycache__
+dashboard/node_modules
+data_ingestion/__pycache__
+database/__pycache__
+evaluation/__pycache__
+feature_engineering/__pycache__
+models/__pycache__
+preprocessing/__pycache__
+recommendations/__pycache__
+scripts/__pycache__
+tests/__pycache__
+training/__pycache__

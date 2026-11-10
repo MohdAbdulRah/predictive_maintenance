@@ -1,0 +1,42 @@
+# Editable inspection rules keyed by MTConnect DataItem `type`. These are INSPECTION SUGGESTIONS,
+# not diagnoses. Have a maintenance engineer review them for your machine.
+signal_rules:
+  TEMPERATURE:
+    issue: "Abnormal temperature behaviour"
+    inspect: ["Cooling / coolant flow and level", "Lubrication condition", "Thermal environment and enclosure ventilation"]
+  LOAD:
+    issue: "Abnormal load behaviour (percent of rated; not torque)"
+    inspect: ["Tool condition and tool holding", "Cutting parameters / program for the active operation", "Workpiece clamping"]
+  ACCELERATION:
+    issue: "Abnormal vibration / acceleration"
+    inspect: ["Bearings", "Alignment and balance", "Mounting and fasteners"]
+  DISPLACEMENT:
+    issue: "Abnormal displacement signal"
+    inspect: ["Sensor mounting and calibration", "Mechanical looseness"]
+  AMPERAGE:
+    issue: "Abnormal electrical current"
+    inspect: ["Motor and drive condition", "Electrical connections and cabling"]
+  VOLTAGE:
+    issue: "Abnormal voltage"
+    inspect: ["Supply stability", "Electrical connections"]
+  ROTARY_VELOCITY:
+    issue: "Abnormal spindle/rotary speed behaviour"
+    inspect: ["Drive and encoder feedback", "Spindle load alongside speed", "Programmed vs actual speed"]
+  PATH_FEEDRATE:
+    issue: "Abnormal feed-rate behaviour"
+    inspect: ["Program/override settings", "Axis drive response"]
+  AXIS_FEEDRATE:
+    issue: "Abnormal axis feed-rate behaviour"
+    inspect: ["Axis drive and ball-screw/guide condition", "Program/override settings"]
+condition_rule:
+  issue: "Machine reported WARNING/FAULT condition"
+  inspect: ["Look up the native code and message in the manufacturer's alarm documentation and follow their procedure"]
+default_rule:
+  issue: "Unusual behaviour in a monitored signal"
+  inspect: ["Review the signal trend against recent programs, tool changes and operator notes"]
+
+thresholds:
+  feature_robust_z_min: 3.0     # a feature must deviate at least this much to be cited as evidence
+  persistence_rows_high: 12     # consecutive 'anomalous' rows before urgency is raised
+  failure_prob_high: 0.5        # only used when a TRAINED failure model supplies probabilities
+  failure_prob_medium: 0.2

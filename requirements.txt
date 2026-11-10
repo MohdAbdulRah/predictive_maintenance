@@ -1,0 +1,19 @@
+pandas>=2.0
+numpy>=1.26
+scikit-learn>=1.6
+joblib>=1.3
+requests>=2.31
+PyYAML>=6.0
+lxml>=5.0
+SQLAlchemy>=2.0
+fastapi>=0.110
+uvicorn>=0.27
+matplotlib>=3.8
+seaborn>=0.13
+pytest>=8.0
+httpx>=0.27
+# PostgreSQL driver (only if DATABASE_URL points at Postgres):
+# psycopg2-binary>=2.9
+# Optional, only for Stage C when real component-life data exists:
+# scikit-survival>=0.22
+# lifelines>=0.28
