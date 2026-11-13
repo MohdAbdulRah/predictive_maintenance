@@ -65,7 +65,8 @@ def run(device=None, cfg=None, session=None, days: int = 7):
                "states_modelled": list(det.models), "states_skipped": det.skipped_states,
                "validation_issues": report["issues"]}
         if len(test):
-            res["heldout_alert_rates"] = alert_rates(det.score(test), cfg["preprocessing"]["grid_seconds"])
+            test_sub = test if len(test) <= 500 else test.iloc[::max(1, len(test) // 500)]
+            res["heldout_alert_rates"] = alert_rates(det.score(test_sub), cfg["preprocessing"]["grid_seconds"])
         record_status(session, "anomaly", "trained", str(path), res)
         return res
     finally:

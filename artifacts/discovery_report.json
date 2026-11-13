@@ -1,12 +1,12 @@
 {
   "agent_header": {
-    "creationTime": "2026-11-05T14:30:15.159918Z",
+    "creationTime": "2026-11-13T06:30:28.805637Z",
     "sender": "demo.mtconnect.org",
     "instanceId": "1791887049",
     "version": "2.8.0.4",
     "deviceModelChangeTime": "2026-10-13T10:24:09.278421Z",
     "assetBufferSize": "1024",
-    "assetCount": "65",
+    "assetCount": "67",
     "bufferSize": "131072"
   },
   "devices": [
@@ -3390,11 +3390,11 @@
   ],
   "current_header": {
     "instance_id": 1791887049,
-    "first_sequence": 91930364,
-    "last_sequence": 92061435,
-    "next_sequence": 92061436,
+    "first_sequence": 122380123,
+    "last_sequence": 122511194,
+    "next_sequence": 122511195,
     "buffer_size": 131072,
-    "creation_time": "2026-11-05T14:30:16.360187Z"
+    "creation_time": "2026-11-13T06:30:29.544437Z"
   },
   "current_execution_values": {
     "ACTIVE": 2
@@ -3469,37 +3469,30 @@
   ],
   "sample_header": {
     "instance_id": 1791887049,
-    "first_sequence": 91930383,
-    "last_sequence": 92061454,
-    "next_sequence": 91930883,
+    "first_sequence": 122380129,
+    "last_sequence": 122511200,
+    "next_sequence": 122380629,
     "buffer_size": 131072,
-    "creation_time": "2026-11-05T14:30:16.679836Z"
+    "creation_time": "2026-11-13T06:30:29.797767Z"
   },
   "sample_numeric_ids_with_data": [
-    "Bload",
     "Fact",
-    "LS1load",
-    "LS1speed",
-    "LS6load",
-    "LS6speed",
+    "LB1actw",
+    "LB1load",
+    "LS1cmd",
+    "LS2SurfaceSpeedA",
+    "LS2cmd",
+    "LS2speed",
     "LX1actm",
     "LX1actw",
     "LX1load",
-    "LYI1actm",
-    "LYI1actw",
     "LYS1load",
     "LZ1actm",
     "LZ1actw",
     "LZ1load",
-    "LZ4load",
     "Lp1Fact",
-    "Lp1Fcmd",
-    "Lp1Fract",
-    "Lp1Frcmd",
     "Lp1LPathPos",
     "LpCuttingTime",
-    "Sload",
-    "Srpm",
     "Xabs",
     "Xfrt",
     "Xload",

@@ -6,6 +6,7 @@ import FailureRiskPanel from './components/FailureRiskPanel'
 import RULPanel from './components/RULPanel'
 import RecommendationsPanel from './components/RecommendationsPanel'
 import ModelStatusPanel from './components/ModelStatusPanel'
+import CsvPredictPage from './components/CsvPredictPage'
 import {
     fetchHealth,
     fetchLive,
@@ -26,7 +27,10 @@ import type {
 
 const POLL_MS = 3000
 
+type Tab = 'dashboard' | 'csv-predict'
+
 export default function App() {
+    const [activeTab, setActiveTab] = useState<Tab>('dashboard')
     const [connected, setConnected] = useState(false)
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
     const [machineId, setMachineId] = useState<string | null>(null)
@@ -85,21 +89,45 @@ export default function App() {
         <div className="app-container">
             <Header connected={connected} lastUpdated={lastUpdated} machineId={machineId} />
 
-            <main className="dashboard-grid" id="main-content">
-                {/* Row 1: Machine status — full width */}
-                <MachineStatus data={live} loading={loading} error={liveErr} />
+            {/* Tab navigation */}
+            <nav className="tab-nav">
+                <button
+                    className={`tab-btn ${activeTab === 'dashboard' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('dashboard')}
+                >
+                    📊 Live Dashboard
+                </button>
+                <button
+                    className={`tab-btn ${activeTab === 'csv-predict' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('csv-predict')}
+                >
+                    📂 CSV Predictor
+                </button>
+            </nav>
 
-                {/* Row 2: Anomaly + Failure side by side */}
-                <AnomalyPanel data={anomaly} loading={loading} error={anomalyErr} />
-                <FailureRiskPanel data={failure} loading={loading} error={failureErr} />
+            {activeTab === 'dashboard' && (
+                <main className="dashboard-grid" id="main-content">
+                    {/* Row 1: Machine status — full width */}
+                    <MachineStatus data={live} loading={loading} error={liveErr} />
 
-                {/* Row 3: Recommendations (wide) + RUL (narrow) */}
-                <RecommendationsPanel data={recs} loading={loading} error={recsErr} />
-                <RULPanel data={rul} loading={loading} error={rulErr} />
+                    {/* Row 2: Anomaly + Failure side by side */}
+                    <AnomalyPanel data={anomaly} loading={loading} error={anomalyErr} />
+                    <FailureRiskPanel data={failure} loading={loading} error={failureErr} />
 
-                {/* Row 4: Model status — full width */}
-                <ModelStatusPanel data={model} loading={loading} error={modelErr} />
-            </main>
+                    {/* Row 3: Recommendations (wide) + RUL (narrow) */}
+                    <RecommendationsPanel data={recs} loading={loading} error={recsErr} />
+                    <RULPanel data={rul} loading={loading} error={rulErr} />
+
+                    {/* Row 4: Model status — full width */}
+                    <ModelStatusPanel data={model} loading={loading} error={modelErr} />
+                </main>
+            )}
+
+            {activeTab === 'csv-predict' && (
+                <main className="csv-predict-main">
+                    <CsvPredictPage />
+                </main>
+            )}
         </div>
     )
 }

@@ -21,7 +21,7 @@ def get_engine(url: str | None = None):
             rel = url.replace("sqlite:///", "")
             p = (ROOT / rel).resolve()
             p.parent.mkdir(parents=True, exist_ok=True)
-            url = f"sqlite:///{p}"
+            url = f"sqlite:///{p.as_posix()}"
         kw = {"future": True}
         if url.startswith("sqlite") and ":memory:" in url:
             from sqlalchemy.pool import StaticPool
