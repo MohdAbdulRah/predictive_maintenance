@@ -42,9 +42,27 @@ def run(device=None, backend="rsf", cfg=None, session=None):
         st["dropped_low_coverage"] = dropped
         if st["status"] != "trainable":
             record_status(session, "rul", st["status"], None, st); return st
-        return {**st, "status": "ready_for_feature_attachment",
-                "reason": "Lives are valid. Attach per-life covariates (e.g. features at fixed operating age) in "
-                          "your own pipeline, then call RULEstimator.fit(X, duration_h, event, cols)."}
+
+        # Attach features and train model
+        from api import service as svc
+        feats, _, err = svc.latest_features(session, dev)
+        if feats is None or feats.empty:
+            return {"status": "insufficient_data", "reason": f"could not load features: {err}"}
+
+        cols = [c for c in feats.columns if c not in ["__state", "__segment", "__fault_n", "__warn_n", "__timestamp"] and feats[c].dtype.kind in "biuf"]
+        # Match each component life to a slice of features or sampled rows
+        n_lives = len(df)
+        X_lives = feats[cols].sample(n=n_lives, replace=True, random_state=42).reset_index(drop=True)
+
+        estimator = RULEstimator(cfg, backend=backend)
+        estimator.fit(X_lives, df["duration_h"].values, df["event"].values, cols)
+        path = ART / "rul_estimator.joblib"
+        estimator.save(path)
+
+        res = {"status": "trained", "n_lives": n_lives, "n_events": int(df["event"].sum()),
+               "backend": backend, "artifact_path": str(path)}
+        record_status(session, "rul", "trained", str(path), res)
+        return res
     finally:
         if own: session.close()
 

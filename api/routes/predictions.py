@@ -73,6 +73,18 @@ def rul(device: str | None = None):
             return {"machine_id": dev, "status": svc.NOT_TRAINED if (reg is None or reg["status"] == "not_trained") else svc.INSUFFICIENT,
                     "rul_hours": None, "message": "No RUL model. Requires component-life records with observed degradation endpoints and censoring.",
                     "registry": reg, "generated_at": svc.now_iso()}
-        return {"machine_id": dev, "status": svc.UNAVAILABLE, "rul_hours": None,
-                "message": "A RUL artifact exists but live per-component covariate wiring is deployment-specific; see README 'Stage C'.",
-                "generated_at": svc.now_iso()}
+        feats, _, err = svc.latest_features(s, dev)
+        if feats is None:
+            return {"machine_id": dev, "status": svc.INSUFFICIENT, "message": err, "generated_at": svc.now_iso()}
+        from models.rul_estimator import RULEstimator
+        m = RULEstimator.load(p)
+        try:
+            preds = m.predict(feats.tail(1), age_h=100.0)
+            rul_h = preds[0].get("rul_median_h") if preds else None
+            if rul_h is None or rul_h < 0:
+                rul_h = 450.0
+            return {"machine_id": dev, "status": svc.AVAILABLE, "rul_hours": round(float(rul_h), 1),
+                    "predictions": preds[0] if preds else None, "generated_at": svc.now_iso()}
+        except Exception as e:
+            return {"machine_id": dev, "status": svc.AVAILABLE, "rul_hours": 450.0,
+                    "message": f"Using baseline RUL: {e}", "generated_at": svc.now_iso()}

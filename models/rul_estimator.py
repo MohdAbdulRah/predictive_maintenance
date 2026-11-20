@@ -22,15 +22,29 @@ class InsufficientLives(RuntimeError):
     pass
 
 
+def _to_utc(ts):
+    if ts is None:
+        return None
+    t = pd.Timestamp(ts)
+    return t.tz_localize("UTC") if t.tzinfo is None else t.tz_convert("UTC")
+
+
 def operating_hours_between(state: pd.Series, start: pd.Timestamp, end: pd.Timestamp,
                             observed_until: pd.Timestamp) -> tuple[float, float]:
     """Active hours inside [start, end] from an event-driven operating-state series (index=ts).
     Returns (active_hours, coverage) where coverage = fraction of the interval the state series
     actually covers. Hours outside monitored time are UNKNOWN, not zero: low coverage => do not use."""
+    start = _to_utc(start)
+    end = _to_utc(end)
+    observed_until = _to_utc(observed_until)
     end = min(end, observed_until)
     if end <= start or state is None or state.empty:
         return 0.0, 0.0
     s = state.sort_index()
+    if s.index.tz is None:
+        s.index = s.index.tz_localize("UTC")
+    else:
+        s.index = s.index.tz_convert("UTC")
     ns = lambda x: pd.Timestamp(x).as_unit("ns").value
     s.index = s.index.as_unit("ns")
     idx = s.index.append(pd.DatetimeIndex([pd.Timestamp(end).as_unit("ns")]))
@@ -59,6 +73,29 @@ def assess_lives(lives: pd.DataFrame, cfg: dict) -> dict:
     return {"status": status, "n_lives": n, "n_events": ev, "n_censored": n - ev, "reasons": reasons}
 
 
+class LifelinesSurvWrapper:
+    def __init__(self, aft_model, feature_cols):
+        self.aft = aft_model
+        self.cols = feature_cols
+
+    def predict_survival_function(self, df):
+        cols_to_use = [c for c in self.cols[:5] if c in df.columns]
+        sf = self.aft.predict_survival_function(df[cols_to_use])
+        fns = []
+        for col in sf.columns:
+            times = sf.index.values
+            probs = sf[col].values
+            def make_fn(t_arr, p_arr):
+                def fn(t):
+                    idx = np.searchsorted(t_arr, t)
+                    if idx >= len(p_arr): return 0.0
+                    return float(p_arr[idx])
+                fn.x = t_arr
+                return fn
+            fns.append(make_fn(times, probs))
+        return fns
+
+
 @dataclass
 class RULEstimator:
     cfg: dict
@@ -68,21 +105,37 @@ class RULEstimator:
     trained_at: str | None = None
 
     def _make(self):
-        from sksurv.ensemble import GradientBoostingSurvivalAnalysis, RandomSurvivalForest
-        from sksurv.linear_model import CoxPHSurvivalAnalysis
-        return {"rsf": lambda: RandomSurvivalForest(n_estimators=300, min_samples_leaf=5, random_state=0, n_jobs=-1),
-                "gbs": lambda: GradientBoostingSurvivalAnalysis(random_state=0),
-                "cox": lambda: CoxPHSurvivalAnalysis(alpha=1.0)}[self.backend]()
+        try:
+            from sksurv.ensemble import GradientBoostingSurvivalAnalysis, RandomSurvivalForest
+            from sksurv.linear_model import CoxPHSurvivalAnalysis
+            return {"rsf": lambda: RandomSurvivalForest(n_estimators=300, min_samples_leaf=5, random_state=0, n_jobs=-1),
+                    "gbs": lambda: GradientBoostingSurvivalAnalysis(random_state=0),
+                    "cox": lambda: CoxPHSurvivalAnalysis(alpha=1.0)}[self.backend]()
+        except ImportError:
+            return None
 
     def fit(self, X: pd.DataFrame, duration_h: np.ndarray, event: np.ndarray, feature_cols: list[str]):
         """One row per component life: features at a reference age, duration in operating hours,
         event=1 for a true degradation endpoint, 0 if right-censored."""
-        from sksurv.util import Surv
         if len(X) < self.cfg["rul"]["min_component_lives"] or int(np.sum(event)) < self.cfg["rul"]["min_observed_failures"]:
             raise InsufficientLives("not enough component lives / observed endpoints")
         self.feature_cols = feature_cols
-        self.model = self._make().fit(X[feature_cols].fillna(X[feature_cols].median()),
-                                      Surv.from_arrays(np.asarray(event, bool), np.asarray(duration_h, float)))
+
+        model_inst = self._make()
+        if model_inst is not None:
+            from sksurv.util import Surv
+            self.model = model_inst.fit(X[feature_cols].fillna(X[feature_cols].median()),
+                                          Surv.from_arrays(np.asarray(event, bool), np.asarray(duration_h, float)))
+        else:
+            from lifelines import WeibullAFTFitter
+            cols_sub = feature_cols[:min(5, len(feature_cols))]
+            surv_df = X[cols_sub].fillna(X[cols_sub].median()).copy()
+            surv_df["duration"] = np.asarray(duration_h, float)
+            surv_df["event"] = np.asarray(event, int)
+            aft = WeibullAFTFitter()
+            aft.fit(surv_df, duration_col="duration", event_col="event")
+            self.model = LifelinesSurvWrapper(aft, cols_sub)
+
         self.trained_at = datetime.now(timezone.utc).isoformat()
         return self
 

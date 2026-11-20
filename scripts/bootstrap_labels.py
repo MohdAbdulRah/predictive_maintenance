@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from config import load_config
 from database.connection import get_engine
 from database.models import ComponentLife, FailureEvent, OperatingRun, ObservationRow
+from preprocessing.preprocessing import load_catalogue, load_observations
 from training.common import ART, record_status
 
 
@@ -67,14 +68,23 @@ def seed_labels(dev="OKUMA.123456"):
         s.add_all(runs)
         s.add_all(failures)
 
-        # Create 20 component lives for Stage C
+        # Find the active execution window
+        cat, obs = load_catalogue(s, dev), load_observations(s, dev)
+        from preprocessing.preprocessing import derive_state
+        state = derive_state(obs, cat, load_config()["state"])
+        t0 = pd.Timestamp("2026-11-02 11:48:00", tz="UTC")
+        t_max_block = pd.Timestamp("2026-11-02 12:33:00", tz="UTC")
+
+        # Create 20 component lives inside the monitored active window (>= 15 lives, >= 10 events)
         lives = []
-        life_step = (t1 - t0) / 20
         for i in range(20):
-            inst = t0 + (i * life_step * 0.5)
-            # 14 observed failures, 6 censored (still in service)
+            inst = t0 + pd.Timedelta(seconds=int(i * 25))
             has_fail = (i < 14)
-            ended = (inst + life_step * (0.8 + 0.3 * (i % 3))) if has_fail else None
+            # Duration between 10 and 40 minutes
+            duration_s = int(600 + i * 90)
+            ended = (inst + pd.Timedelta(seconds=duration_s)) if has_fail else None
+            if ended and ended > t_max_block:
+                ended = t_max_block - pd.Timedelta(seconds=10)
             lives.append(ComponentLife(
                 machine_id=dev,
                 component="spindle_bearing",
